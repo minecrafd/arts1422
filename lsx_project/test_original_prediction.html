@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <title>Test</title>
+
+        <script
+            type="text/javascript"
+            src="https://api.map.baidu.com/api?v=3.0&ak=Q9qEZOG1OpVy6iNLU1DdAhVPc8KLSuce"
+        ></script>
+
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <script
+            type="text/javascript"
+            src="https://api.map.baidu.com/library/TextIconOverlay/1.2/src/TextIconOverlay_min.js"
+        ></script>
+        <script
+            type="text/javascript"
+            src="js/MarkerClusterModified.js"
+        ></script>
+        <script type="text/javascript" src="js/Heatmap.js"></script>
+        <script type="text/jacascript" src="js/Prediction.js"></script>
+
+        <!--新加的-->
+        <link
+            rel="stylesheet"
+            href="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/css/bootstrap.min.css"
+        />
+        <script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+        <script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+        <script>
+            //默认图表显示上海市全市的数据
+            $.ajax({
+                url: "http://localhost:8800/keras_prediction",
+                type: "post",
+                dataType: "json",
+                data: JSON.stringify({
+                    district: "Shanghai",
+                }),
+                success: function (data) {
+                    //alert("success");
+                    AreaChart(data);
+                },
+                error: function (data) {
+                    alert("failed");
+                    console.log(data);
+                    console.log("***********");
+                },
+            });
+
+            //后端使用选择的训练集
+            function GetDistrict(object) {
+                var index = object.selectedIndex;
+                var val = object.options[index].value;
+                console.log(val);
+                CentreDist(val, map);
+                $.ajax({
+                    url: "http://localhost:8800/keras_prediction",
+                    type: "post",
+                    dataType: "json",
+                    data: JSON.stringify({
+                        district: val,
+                    }),
+                    success: function (data) {
+                        console.log(data);
+                        //alert("success");
+                        AreaChart(data);
+                    },
+                    error: function (data) {
+                        alert("failed");
+                        console.log(data);
+                        console.log("***********");
+                    },
+                });
+            }
+
+            // 地图中心重置并放大
+            function CentreDist(dist) {
+                var positions = {
+                    Shanghai: [121.480248, 31.236276],
+                    Huangpu: [121.4912, 31.23735],
+                    Jingan: [121.453768, 31.234232],
+                    Changning: [121.430876, 31.226667],
+                    Putuo: [121.402309, 31.25541],
+                    Xuhui: [121.442884, 31.194772],
+                    Yangpu: [121.531921, 31.265522],
+                    Hongkou: [121.51112, 31.270402],
+                    PudongNew: [121.550734, 31.227827],
+                    Minhang: [121.387518, 31.118477],
+                    Baoshan: [121.495955, 31.410914],
+                    Jiading: [121.271855, 31.381305],
+                    Songjiang: [121.234125, 31.038625],
+                    Fengxian: [121.480461, 30.924288],
+                    Jinshan: [121.34828, 30.748958],
+                    Qingpu: [121.495955, 31.410914],
+                    Chongming: [121.403893, 31.62918],
+                };
+                var pointX = positions[dist][0];
+                var pointY = positions[dist][1];
+                console.log(pointX, pointY);
+                var distCenter = new BMap.Point(pointX, pointY);
+
+                map.setCenter(distCenter);
+                console.log(map.getCenter());
+                while (map.getZoom() < 13) {
+                    map.zoomIn();
+                }
+            }
+
+            //擦除并重绘预测AreaPlot
+            function AreaChart(data) {
+                var svg = d3.select("svg"),
+                    margin = { top: 20, right: 20, bottom: 30, left: 50 },
+                    width = +svg.attr("width") - margin.left - margin.right,
+                    height = +svg.attr("height") - margin.top - margin.bottom;
+                g = svg
+                    .append("g")
+                    .attr(
+                        "transform",
+                        "translate(" + margin.left + "," + margin.top + ")"
+                    );
+
+                svg.selectAll(".area").remove();
+
+                svg.selectAll(".axis--y").remove();
+
+                var color = d3
+                    .scaleOrdinal()
+                    .domain(["data_origin", "train_predict", "test_predict"])
+                    .range([
+                        "rgba(249, 208, 87, 0.7)",
+                        "rgba(54, 174, 175, 0.65)",
+                        "rgba(189, 74, 233, 0.7)",
+                    ]);
+
+                var x = d3.scaleLinear().range([0, width]),
+                    y = d3.scaleLinear().range([height, 0]),
+                    z = color;
+
+                var area = d3
+                    .area()
+                    .curve(d3.curveMonotoneX)
+                    .x(function (d) {
+                        return x(d.date);
+                    })
+                    .y0(y(0))
+                    .y1(function (d) {
+                        return y(d.num);
+                    });
+
+                //console.log(data)
+                var columns = ["data_origin", "train_predict", "test_predict"];
+                var sources = columns.map(function (id) {
+                    return {
+                        id: id,
+                        values: data.map(function (d) {
+                            return { date: d.date, num: d[id] };
+                        }),
+                    };
+                });
+
+                console.log(sources);
+
+                x.domain(
+                    d3.extent(data, function (d) {
+                        return d.date;
+                    })
+                );
+                y.domain([
+                    0,
+                    d3.max(sources, function (c) {
+                        return d3.max(c.values, function (d) {
+                            return d.num;
+                        });
+                    }),
+                ]);
+                z.domain(
+                    sources.map(function (c) {
+                        return c.id;
+                    })
+                );
+
+                //坐标轴
+                g.append("g")
+                    .attr("class", "axis--x")
+                    .attr("transform", "translate(0," + height + ")")
+                    .call(d3.axisBottom(x))
+                    .append("text")
+                    .attr(
+                        "transform",
+                        "translate(" + 0.95 * width + "," + 0.05 * height + ")"
+                    )
+                    .attr("y", 6)
+                    .attr("dy", "0.71em")
+                    .attr("fill", "#000")
+                    .text("日期-自4月1日");
+
+                g.append("g")
+                    .attr("class", "axis--y")
+                    .call(d3.axisLeft(y))
+                    .append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", 6)
+                    .attr("dy", "0.71em")
+                    .attr("fill", "#000")
+                    .text("病例数");
+
+                //LEGEND
+                var size = 20;
+                svg.selectAll("mydots")
+                    .data(columns)
+                    .enter()
+                    .append("rect")
+                    .attr("x", 0.85 * width)
+                    .attr("y", function (d, i) {
+                        return 0.05 * height + i * (size + 5);
+                    })
+                    .attr("width", size)
+                    .attr("height", size)
+                    .style("fill", function (d) {
+                        return color(d);
+                    });
+
+                svg.selectAll("mylabels")
+                    .data(columns)
+                    .enter()
+                    .append("text")
+                    .attr("x", 0.85 * width + size * 1.2)
+                    .attr("y", function (d, i) {
+                        return 0.05 * height + i * (size + 5) + size / 2;
+                    })
+                    .style("fill", function (d) {
+                        return color(d);
+                    })
+                    .text(function (d) {
+                        return d;
+                    })
+                    .attr("text-anchor", "left")
+                    .style("alignment-baseline", "middle");
+
+                var source = g
+                    .selectAll(".area")
+                    .data(sources)
+                    .enter()
+                    .append("g")
+                    .attr("class", function (d) {
+                        return `area ${d.id}`;
+                    });
+
+                source
+                    .append("path")
+                    .attr("d", function (d) {
+                        return area(d.values);
+                    })
+                    .style("fill", function (d) {
+                        return z(d.id);
+                    });
+            }
+        </script>
+        <style type="text/css">
+            body {
+                background-color: rgb(252, 253, 253);
+            }
+            html {
+                height: 100%;
+            }
+            body {
+                height: 100%;
+                width: 100%;
+            }
+            #container {
+                position: absolute;
+                height: 65%;
+                width: 75%;
+                margin: 0px;
+                padding: 0px;
+                top: 60px;
+                right: 0px;
+            }
+            /*#container2{position:absolute;height:100%;width:20%;margin:0px;padding:0px;top:0px;left:0px;}*/
+        </style>
+    </head>
+
+    <body>
+        <!--导航栏-->
+        <nav class="navbar navbar-inverse" role="navigation">
+            <div class="container-fluid">
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="#">2022上海新冠疫情可视化</a>
+                </div>
+                <div>
+                    <ul class="nav navbar-nav">
+                        <li><a id="map" href="test_original.html">地图</a></li>
+                        <li>
+                            <a id="data" href="test_original_second_part.html"
+                                >舆情</a
+                            >
+                        </li>
+                        <li>
+                            <a
+                                id="prediction"
+                                href="test_original_prediction.html"
+                                >预测</a
+                            >
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <!--区域选单-->
+        <div style="width: 100%; top: 50px">
+            <div style="float: left">
+                <label
+                    class="map_control"
+                    style="font-size: 20px; position: absolute; left: 25px"
+                    for="select_district"
+                >
+                    选择需要预测的区域
+                </label>
+            </div>
+            <div style="float: right">
+                <select
+                    class="map_control"
+                    name="select_district"
+                    id="select_district"
+                    style="position: absolute; left: 250px"
+                    onchange="GetDistrict(this)"
+                >
+                    <option value="Shanghai">上海市</option>
+                    <option value="PudongNew">浦东新区</option>
+                    <option value="Huangpu">黄浦区</option>
+                    <option value="Jingan">静安区</option>
+                    <option value="Xuhui">徐汇区</option>
+                    <option value="Changning">长宁区</option>
+                    <option value="Putuo">普陀区</option>
+                    <option value="Hongkou">虹口区</option>
+                    <option value="Yangpu">杨浦区</option>
+                    <option value="Baoshan">宝山区</option>
+                    <option value="Minhang">闵行区</option>
+                    <option value="Jiading">嘉定区</option>
+                    <option value="Jinshan">金山区</option>
+                    <option value="Songjiang">松江区</option>
+                    <option value="Huangpu">青浦区</option>
+                    <option value="Fengxian">奉贤区</option>
+                    <option value="Chongming">崇明区</option>
+                </select>
+            </div>
+        </div>
+
+        <!--AreaPlot-->
+        <div id="Area" style="top: 100px; position: absolute; display: inline">
+            <svg width="400" height="300"></svg>
+        </div>
+
+        <div id="container"></div>
+        <script type="text/javascript" src="js/mapMain_heat.js"></script>
+
+        <!--时间轴-->
+        <div>
+            <input
+                style="width: 62%; position: absolute; top: 680px; left: 25%"
+                type="range"
+                id="DateRange"
+                min="0"
+                max="20"
+                step="1"
+                onchange="changeDate()"
+            />
+        </div>
+        <script>
+            function changeDate() {
+                var x = document.getElementById("DateRange").value;
+                alert("显示第" + x + "天的数据");
+            }
+        </script>
+
+        <!---->
+        <div id="Restimation">
+            
+        </div>
+
+    </body>
+</html>
