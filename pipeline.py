@@ -258,7 +258,7 @@ whole_count.index = df_tsne.index
 df_tsne['content'] = whole_count['content']
 df_tsne['count'] = whole_count['count']
 df_tsne['emo'] = df_tsne['content'].apply(get_sentiment)
-df_tsne.to_csv("tsne.csv")
+# df_tsne.to_csv("tsne.csv")
 print(df_tsne)
 #%%
 # 聚类
