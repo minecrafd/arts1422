@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<!-- Load d3.js -->
+<script src="https://d3js.org/d3.v6.js"></script>
+
+<!-- Add a slider -->
+<input type="range" name="mySlider" id=mySlider min="1" max="100" value="50">
+
+<!-- Create a div where the graph will take place -->
+<div id="my_dataviz"></div>
+
+<script>
+
+
+// get the data
+d3.select("#mySlider").on("change", function(d){
+    selectedValue = this.value
+    console.log("sb")
+  })
+
+
+
+</script>
