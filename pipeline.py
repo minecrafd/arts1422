@@ -248,17 +248,15 @@ mask = whole_count['content'].str.len() <= 1
 whole_count = whole_count[~mask]
 tsne = TSNE(n_components=2, random_state=2)
 pca = PCA(n_components = 2)
-#embedding = pca.fit_transform(whole_count.drop('content', axis=1))
 embedding = tsne.fit_transform(whole_count.drop('content', axis=1))
 
 # 创建降维后的DataFrame
 df_tsne = pd.DataFrame(embedding, columns=['Dimension_1', 'Dimension_2'])
-#df_tsne['Dimension_1'] /= 10000000000
 whole_count.index = df_tsne.index
 df_tsne['content'] = whole_count['content']
 df_tsne['count'] = whole_count['count']
 df_tsne['emo'] = df_tsne['content'].apply(get_sentiment)
-# df_tsne.to_csv("tsne.csv")
+df_tsne.to_csv("tsne.csv")
 print(df_tsne)
 #%%
 # 聚类
@@ -499,67 +497,5 @@ json_str = json.dumps(json_data, indent=4)
 print(json_str)
 with open('data.json', 'w') as file:
     file.write(json_str)
-#%%
-# # 3.保存弹幕列表
-#
-# def save_to_file(data):
-#     with open("dan_mu.txt", mode="w", encoding="utf-8") as f:
-#         for i in data:
-#             f.write(i)
-#             f.write("\n")
-# save_to_file(data)
 
-#%%
-# # 1 导入相关库
-# import pandas as pd
-# import jieba
-# from wordcloud import WordCloud
-# import matplotlib.pyplot as plt
-# from imageio import imread
-#%%
-# # 目标视频文件的处理
-# df = pd.read_csv("video.csv")
-# array = np.array(df)
-# content = array[:, 3]
-# progress = array
-#%%
-
-# import warnings
-# warnings.filterwarnings("ignore")
-#
-# # 2 读取文本文件，并使用lcut()方法进行分词
-# with open("video.csv",encoding="utf-8") as f:
-#     txt = f.read()
-# txt = txt.split()
-# data_cut = [jieba.lcut(x) for x in txt]
-# data_cut
-# # 3 读取停用词
-# stop = [" ","道","说道","说",'了']
-# # 4 去掉停用词之后的最终词
-# s_data_cut = pd.Series(data_cut)
-# all_words_after = s_data_cut.apply(lambda x:[i for i in x if i not in stop])
-# # 5 词频统计
-# all_words = []
-# for i in all_words_after:
-#     all_words.extend(i)
-# word_count = pd.Series(all_words).value_counts()
-# # 6 词云图的绘制
-# # 1）读取背景图片
-#
-#
-# # 2）设置词云参数
-# wc = WordCloud(font_path="C:/Users/Windows/fonts/simhei.ttf",
-#                background_color="white",
-#                max_words=2000,
-#                max_font_size=200,
-#                random_state=42
-#               )
-# wc2 = wc.fit_words(word_count)
-#
-# # 3）绘制词云图
-# plt.figure(figsize=(16,8), dpi=300)
-# plt.imshow(wc2)
-# plt.axis("off")
-# plt.show()
-# wc.to_file("ciyun.jpg")
 
